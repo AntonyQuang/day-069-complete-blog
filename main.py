@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, flash
+from flask import Flask, render_template, redirect, url_for, flash, abort
 from flask_bootstrap import Bootstrap
 from flask_ckeditor import CKEditor
 from datetime import date
@@ -8,6 +8,18 @@ from sqlalchemy.orm import relationship
 from flask_login import UserMixin, login_user, LoginManager, login_required, current_user, logout_user
 from forms import CreatePostForm, RegisterForm, LogInForm
 from flask_gravatar import Gravatar
+from functools import wraps
+
+
+def admin_only(inside_function):
+    @wraps(inside_function)
+    def check_admin(*args, **kwargs):
+        if current_user.get_id() != "1":
+            return abort(403)
+        else:
+            inside_function(*args, **kwargs)
+    return check_admin
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
@@ -27,12 +39,13 @@ login_manager.init_app(app)
 class BlogPost(db.Model):
     __tablename__ = "blog_posts"
     id = db.Column(db.Integer, primary_key=True)
-    author = db.Column(db.String(250), nullable=False)
+    author = relationship("User", back_populates="blogposts")
     title = db.Column(db.String(250), unique=True, nullable=False)
     subtitle = db.Column(db.String(250), nullable=False)
     date = db.Column(db.String(250), nullable=False)
     body = db.Column(db.Text, nullable=False)
     img_url = db.Column(db.String(250), nullable=False)
+    author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
 class User(UserMixin, db.Model):
     __tablename__ = "users"
@@ -40,8 +53,12 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(100), unique=True)
     password = db.Column(db.String(1000))
     name = db.Column(db.String(1000))
+    blogposts = db.relationship('BlogPost', back_populates="author")
 
-#db.create_all()
+db.create_all()
+
+
+
 
 
 @login_manager.user_loader
@@ -52,7 +69,8 @@ def load_user(user_id):
 @app.route('/')
 def get_all_posts():
     posts = BlogPost.query.all()
-    return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated)
+    print(type(current_user.get_id()))
+    return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated, user_id=current_user.get_id())
 
 
 @app.route('/register', methods=["GET","POST"])
@@ -78,7 +96,7 @@ def register():
             db.session.commit()
             login_user(new_user)
             return redirect(url_for('get_all_posts'))
-    return render_template("register.html", form=register_form, logged_in=current_user.is_authenticated)
+    return render_template("register.html", form=register_form, logged_in=current_user.is_authenticated, user_id=current_user.get_id())
 
 
 @app.route('/login', methods=["GET","POST"])
@@ -109,6 +127,7 @@ def logout():
 @app.route("/post/<int:post_id>")
 def show_post(post_id):
     requested_post = BlogPost.query.get(post_id)
+    print(current_user.get_id())
     return render_template("post.html", post=requested_post, logged_in=current_user.is_authenticated)
 
 
@@ -122,7 +141,9 @@ def contact():
     return render_template("contact.html")
 
 
+
 @app.route("/new-post")
+@admin_only
 def add_new_post():
     form = CreatePostForm()
     if form.validate_on_submit():
@@ -137,10 +158,12 @@ def add_new_post():
         db.session.add(new_post)
         db.session.commit()
         return redirect(url_for("get_all_posts"))
-    return render_template("make-post.html", form=form)
+    return render_template("make-post.html", form=form, logged_in=current_user.is_authenticated, user_id=current_user.get_id())
+
 
 
 @app.route("/edit-post/<int:post_id>")
+@admin_only
 def edit_post(post_id):
     post = BlogPost.query.get(post_id)
     edit_form = CreatePostForm(
@@ -159,9 +182,9 @@ def edit_post(post_id):
         db.session.commit()
         return redirect(url_for("show_post", post_id=post.id))
 
-    return render_template("make-post.html", form=edit_form)
+    return render_template("make-post.html", form=edit_form, logged_in=current_user.is_authenticated, user_id=current_user.get_id())
 
-
+@admin_only
 @app.route("/delete/<int:post_id>")
 def delete_post(post_id):
     post_to_delete = BlogPost.query.get(post_id)

@@ -9,6 +9,7 @@ class CreatePostForm(FlaskForm):
     subtitle = StringField("Subtitle", validators=[DataRequired()])
     img_url = StringField("Blog Image URL", validators=[DataRequired(), URL()])
     body = CKEditorField("Blog Content", validators=[DataRequired()])
+    author = StringField("Author", validators=[DataRequired(), URL()])
     submit = SubmitField("Submit Post")
 
 
