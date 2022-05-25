@@ -81,7 +81,7 @@ class Comment(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
 
-#db.create_all()
+db.create_all()
 
 @login_manager.user_loader
 def load_user(user_id):
