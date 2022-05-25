@@ -80,7 +80,7 @@ class Comment(db.Model):
     comment_author = relationship("User", back_populates="comments")
     author_id = db.Column(db.Integer, db.ForeignKey("users.id"))
 
-# db.create_all()
+db.create_all()
 
 
 @login_manager.user_loader
@@ -91,7 +91,6 @@ def load_user(user_id):
 @app.route('/')
 def get_all_posts():
     posts = BlogPost.query.all()
-    print(type(current_user.get_id()))
     return render_template("index.html", all_posts=posts, logged_in=current_user.is_authenticated,
                            user_id=current_user.get_id())
 
