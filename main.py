@@ -11,6 +11,7 @@ from flask_gravatar import Gravatar
 from functools import wraps
 import os
 
+
 def admin_only(inside_function):
     @wraps(inside_function)
     def check_admin(*args, **kwargs):
